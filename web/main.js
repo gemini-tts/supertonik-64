@@ -5,7 +5,7 @@ import {
 } from './helper.js';
 
 // Configuration
-const DEFAULT_VOICE_STYLE_PATH = 'assets/voice_styles/M1.json';
+const DEFAULT_VOICE_STYLE_PATH = './assets/voice_styles/M1.json';
 
 // Helper function to extract filename from path
 function getFilenameFromPath(path) {
@@ -73,7 +73,7 @@ async function initializeModels() {
     try {
         showStatus('ℹ️ <strong>Loading configuration...</strong>');
         
-        const basePath = 'assets/onnx';
+        const basePath = './assets/onnx';
         
         // Try WebGPU first, fallback to WASM
         let executionProvider = 'wasm';
@@ -282,7 +282,7 @@ window.downloadAudio = function(url, filename) {
 };
 
 // Attach generate function to button
-generateBtn.addEventListener('click', generateSpeech);
+generateBut ton.addEventListener('click', generateSpeech);
 
 // Initialize on load
 window.addEventListener('load', async () => {

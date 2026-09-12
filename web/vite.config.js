@@ -32,6 +32,7 @@ function serveRootAssets() {
 }
 
 export default defineConfig({
+  base: '/supertonik-64/',
   plugins: [serveRootAssets()],
   server: {
     port: 3000,
