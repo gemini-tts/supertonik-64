@@ -282,7 +282,7 @@ window.downloadAudio = function(url, filename) {
 };
 
 // Attach generate function to button
-generateBut ton.addEventListener('click', generateSpeech);
+generateBtn.addEventListener('click', generateSpeech);
 
 // Initialize on load
 window.addEventListener('load', async () => {
