@@ -1,10 +1,27 @@
 import * as ort from 'onnxruntime-web';
 
+// Get the base path from import.meta.url or use default
+function getBasePath() {
+  const currentUrl = new URL(import.meta.url, window.location.href);
+  const basePath = import.meta.env.BASE_URL || '/';
+  return basePath;
+}
+
 // Available languages for multilingual TTS
-export const AVAILABLE_LANGS = ['en', 'ko', 'ja', 'ar', 'bg', 'cs', 'da', 'de', 'el', 'es', 'et', 'fi', 'fr', 'hi', 'hr', 'hu', 'id', 'it', 'lt', 'lv', 'nl', 'pl', 'pt', 'ro', 'ru', 'sk', 'sl', 'sv', 'tr', 'uk', 'vi', 'na'];
+export const AVAILABLE_LANGS = ['en', 'ko', 'ja', 'ar', 'bg', 'cs', 'da', 'de', 'el', 'es', 'et', 'fi', 'fr', 'hi', 'hr', 'hu', 'id', 'it', 'lt', 'lv', 'nl', 'pl', 'pt', 'ro', 'ru', 'sk', 'sl', 'sv', 'tr', 'uk', 'vi'];
 
 export function isValidLang(lang) {
     return AVAILABLE_LANGS.includes(lang);
+}
+
+/**
+ * Resolve path with base URL
+ */
+function resolvePath(path) {
+    const basePath = getBasePath();
+    // Remove leading ./ if present and ensure proper concatenation
+    const cleanPath = path.startsWith('./') ? path.substring(2) : path;
+    return `${basePath}${cleanPath}`;
 }
 
 /**
@@ -39,7 +56,7 @@ export class UnicodeProcessor {
         text = text.normalize('NFKD');
 
         // Remove emojis (wide Unicode range)
-        const emojiPattern = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}]+/gu;
+        const emojiPattern = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}]/gu;
         text = text.replace(emojiPattern, '');
 
         // Replace various dashes and symbols
@@ -360,8 +377,14 @@ export class TextToSpeech {
 export async function loadVoiceStyle(voiceStylePaths, verbose = false) {
     const bsz = voiceStylePaths.length;
     
+    // Resolve paths with base URL
+    const resolvedPaths = voiceStylePaths.map(p => resolvePath(p));
+    
     // Read first file to get dimensions
-    const firstResponse = await fetch(voiceStylePaths[0]);
+    const firstResponse = await fetch(resolvedPaths[0]);
+    if (!firstResponse.ok) {
+        throw new Error(`Failed to load voice style: ${resolvedPaths[0]} (${firstResponse.status})`);
+    }
     const firstStyle = await firstResponse.json();
     
     const ttlDims = firstStyle.style_ttl.dims;
@@ -380,7 +403,10 @@ export async function loadVoiceStyle(voiceStylePaths, verbose = false) {
     
     // Fill in the data
     for (let i = 0; i < bsz; i++) {
-        const response = await fetch(voiceStylePaths[i]);
+        const response = await fetch(resolvedPaths[i]);
+        if (!response.ok) {
+            throw new Error(`Failed to load voice style: ${resolvedPaths[i]} (${response.status})`);
+        }
         const voiceStyle = await response.json();
         
         // Flatten TTL data
@@ -411,7 +437,11 @@ export async function loadVoiceStyle(voiceStylePaths, verbose = false) {
  * Load configuration from JSON
  */
 export async function loadCfgs(onnxDir) {
-    const response = await fetch(`${onnxDir}/tts.json`);
+    const resolvedPath = resolvePath(onnxDir + '/tts.json');
+    const response = await fetch(resolvedPath);
+    if (!response.ok) {
+        throw new Error(`Failed to load configuration: ${resolvedPath} (${response.status})`);
+    }
     const cfgs = await response.json();
     return cfgs;
 }
@@ -420,7 +450,11 @@ export async function loadCfgs(onnxDir) {
  * Load text processor
  */
 export async function loadTextProcessor(onnxDir) {
-    const response = await fetch(`${onnxDir}/unicode_indexer.json`);
+    const resolvedPath = resolvePath(onnxDir + '/unicode_indexer.json');
+    const response = await fetch(resolvedPath);
+    if (!response.ok) {
+        throw new Error(`Failed to load text processor: ${resolvedPath} (${response.status})`);
+    }
     const indexer = await response.json();
     return new UnicodeProcessor(indexer);
 }
@@ -429,7 +463,9 @@ export async function loadTextProcessor(onnxDir) {
  * Load ONNX model
  */
 export async function loadOnnx(onnxPath, options) {
-    const session = await ort.InferenceSession.create(onnxPath, options);
+    const resolvedPath = resolvePath(onnxPath);
+    console.log(`Loading ONNX model from: ${resolvedPath}`);
+    const session = await ort.InferenceSession.create(resolvedPath, options);
     return session;
 }
 
